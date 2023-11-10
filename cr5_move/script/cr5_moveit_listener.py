@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
- 
-import rospy, sys
+
+import math
+import random 
 import actionlib
+import rospy, sys
 import moveit_commander
 from geometry_msgs.msg import PoseStamped, Pose
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+ 
  
  
 class MoveItIkDemo:
@@ -17,7 +20,6 @@ class MoveItIkDemo:
         
         # 初始化ROS节点
         rospy.init_node('moveit_ik_demo')
-    
 
     def random_move(self):
         # 初始化需要使用move group控制的机械臂中的arm group
@@ -42,9 +44,9 @@ class MoveItIkDemo:
         arm.set_max_velocity_scaling_factor(0.5)
  
         # 控制机械臂先回到初始化位置
-        arm.set_named_target('home')
-        arm.go()
-        rospy.sleep(1)
+        # arm.set_named_target('home')
+        # arm.go()
+        # rospy.sleep(1)
                
         # 设置机械臂工作空间中的目标位姿，位置使用x、y、z坐标描述，
         # 姿态使用四元数描述，基于base_link坐标系
@@ -52,37 +54,45 @@ class MoveItIkDemo:
         #参考坐标系，前面设置了
         target_pose.header.frame_id = reference_frame
         target_pose.header.stamp = rospy.Time.now() #时间戳？
-        #末端位置   
-        target_pose.pose.position.x = 0.2593
-        target_pose.pose.position.y = 0.0636
-        target_pose.pose.position.z = 0.1787
-        #末端姿态，四元数
-        target_pose.pose.orientation.x = 0.70692
-        target_pose.pose.orientation.y = 0.0
-        target_pose.pose.orientation.z = 0.0
-        target_pose.pose.orientation.w = 0.70729
-        
-        # 设置机器臂当前的状态作为运动初始状态
-        arm.set_start_state_to_current_state()
-        
-        # 设置机械臂终端运动的目标位姿
-        arm.set_pose_target(target_pose, end_effector_link)
-        
-        # 规划运动路径，返回虚影的效果
-        traj = arm.plan()
-        
-        # 按照规划的运动路径控制机械臂运动
-        arm.execute(traj)
-        rospy.sleep(1)  #执行完成后休息1s
- 
+    
+        pose_cur = arm.get_current_pose()
+        rpy_cur = arm.get_current_rpy()
+
+        for i in range(10):
+
+
+            # print(pose_cur)
+            # print(rpy_cur)
+
+            #末端位置   
+            target_pose.pose.position.x = pose_cur.pose.position.x-random.random()/50
+            target_pose.pose.position.y = pose_cur.pose.position.y-random.random()/50
+            target_pose.pose.position.z = pose_cur.pose.position.z-random.random()/50
+            #末端姿态，四元数
+            target_pose.pose.orientation.x = pose_cur.pose.orientation.x
+            target_pose.pose.orientation.y = pose_cur.pose.orientation.y
+            target_pose.pose.orientation.z = pose_cur.pose.orientation.z
+            target_pose.pose.orientation.w = pose_cur.pose.orientation.w
+            
+            # 设置机器臂当前的状态作为运动初始状态
+            arm.set_start_state_to_current_state()
+
+            # 设置机械臂终端运动的目标位姿
+            arm.set_pose_target(target_pose, end_effector_link)
+            
+            # 规划运动路径，返回虚影的效果
+            traj = arm.plan()
+            
+            # 按照规划的运动路径控制机械臂运动
+            arm.execute(traj)
+            # rospy.sleep(1)  #执行完成后休息1s
+    
+
         # 控制机械臂回到初始化位置
         arm.set_named_target('home')
         arm.go()
  
-        # 关闭并退出moveit
-        moveit_commander.roscpp_shutdown()
-        moveit_commander.os._exit(0)
-    
+
 
     def move(self):
         # 机械臂中joint的命名
@@ -93,7 +103,7 @@ class MoveItIkDemo:
                       'joint5',
                       'joint6']
         
-        arm_goal  = [-0.3, -1.0, 0.5, 0.8, 1.0, -0.7]
+        arm_goal  = [0.0, -0.2, math.pi/2, 0.0, 0.0, 0.0]
     
         # 连接机械臂轨迹规划的trajectory action server
         rospy.loginfo('Waiting for arm trajectory controller...')       
@@ -130,10 +140,17 @@ class MoveItIkDemo:
         arm_client.wait_for_result(rospy.Duration(5.0))
         
         rospy.loginfo('...done')
+    
+    def listenfromIC(self):
+        rospy.Subscriber("chatter", String, callback)
+        #rospy.spin()只是使节点无法退出，直到该节点已关闭
+        rospy.spin()
+        pass
  
 if __name__ == "__main__":
     it = MoveItIkDemo()
     it.move()
     it.random_move()
-
-
+    # 关闭并退出moveit
+    moveit_commander.roscpp_shutdown()
+    moveit_commander.os._exit(0)
