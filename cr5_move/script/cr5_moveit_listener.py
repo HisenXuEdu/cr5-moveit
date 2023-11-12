@@ -6,20 +6,20 @@ import random
 import actionlib
 import rospy, sys
 import moveit_commander
-from geometry_msgs.msg import PoseStamped, Pose
+from geometry_msgs.msg import PoseStamped, Pose, Twist
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
  
  
  
-class MoveItIkDemo:
+class MoveItDemo:
     def __init__(self):
  
         # 初始化move_group的API
         moveit_commander.roscpp_initialize(sys.argv)
         
         # 初始化ROS节点
-        rospy.init_node('moveit_ik_demo')
+        rospy.init_node('moveit_demo')
 
     def random_move(self):
         # 初始化需要使用move group控制的机械臂中的arm group
@@ -140,17 +140,33 @@ class MoveItIkDemo:
         arm_client.wait_for_result(rospy.Duration(5.0))
         
         rospy.loginfo('...done')
-    
-    def listenfromIC(self):
-        rospy.Subscriber("chatter", String, callback)
-        #rospy.spin()只是使节点无法退出，直到该节点已关闭
-        rospy.spin()
+
+    def pub_status(self):
+        pub = rospy.Publisher('chatter', String, queue_size=10)
+        rate = rospy.Rate(10) # 10hz
+        while not rospy.is_shutdown():
+            hello_str = "hello world %s" % rospy.get_time()
+            rospy.loginfo(hello_str)
+            pub.publish(hello_str)
+            rate.sleep()
+
+
+    def ic_control(self, data):
+        rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
         pass
+    
+    def listen_ic(self):
+        rospy.Subscriber("chatter", Twist, self.ic_control)
+        # #rospy.spin()只是使节点无法退出，直到该节点已关闭
+        # rospy.spin()
+
  
 if __name__ == "__main__":
-    it = MoveItIkDemo()
+    it = MoveItDemo()
     it.move()
-    it.random_move()
+    it.pub_status()
+    it.listen_ic()
+    it.ICcontrol()
     # 关闭并退出moveit
     moveit_commander.roscpp_shutdown()
     moveit_commander.os._exit(0)
